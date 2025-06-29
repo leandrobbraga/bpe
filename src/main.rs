@@ -75,15 +75,17 @@ fn main() {
     } = Arguments::parse();
 
     let text = fs::read(filepath).unwrap();
-    let mut vocabulary = Vec::with_capacity(256);
+    let mut vocabulary = Vec::with_capacity(vocabulary_size as usize);
     for byte in 0..=255u8 {
         vocabulary.push(Token::Byte(byte));
     }
 
     let mut tokens: Vec<u32> = text.into_iter().map(|ch| ch as u32).collect();
 
+    let mut frequencies = HashMap::with_capacity(vocabulary_size as usize);
     for _ in 0..vocabulary_size {
-        let pair = most_frequent_token_pair(&tokens);
+        let pair = most_frequent_token_pair(&tokens, &mut frequencies);
+        frequencies.clear();
         replace_token_pair(&mut tokens, pair, vocabulary.len() as u32);
         vocabulary.push(pair);
     }
@@ -109,18 +111,16 @@ fn usage(program_name: &str) {
     eprintln!("  {} -n 1000 input.txt", program_name);
 }
 
-fn most_frequent_token_pair(tokens: &[u32]) -> Token {
-    let mut frequencies: HashMap<Token, u32> = HashMap::new();
-
+fn most_frequent_token_pair(tokens: &[u32], frequencies: &mut HashMap<Token, u32>) -> Token {
     for i in 1..tokens.len() {
         let pair = Token::Pair(tokens[i - 1], tokens[i]);
         *frequencies.entry(pair).or_insert(0) += 1;
     }
 
     frequencies
-        .into_iter()
+        .iter()
         .max_by_key(|(_key, count)| *count)
-        .map(|(token, _count)| token)
+        .map(|(token, _count)| *token)
         .unwrap()
 }
 
